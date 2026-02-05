@@ -1,69 +1,69 @@
-# Carousell Marketplace CLI Implementation
+# Carousell Marketplace CLI Implementation (Spring Boot Edition)
 
 ## **Overview**
-A high-performance, thread-safe, and extensible CLI application for managing a marketplace. Built strictly with **Java 8 (Standard Library)**, this project demonstrates production-grade software engineering principles including SOLID design, the Command Pattern, and defensive programming.
+A production-grade, thread-safe CLI application for managing a marketplace. This implementation has been refactored from a standard Java 8 project to a modern **Spring Boot** application. It leverages **Spring Shell** for CLI lifecycle management and **Lombok** to ensure a clean, boilerplate-free codebase.
 
 ---
 
 ## **Architectural Design Patterns**
 
-To ensure the system is maintainable and resilient to changing requirements, the following patterns were implemented:
-
-* **Command Pattern:** Each operation (e.g., `NotesING`) is encapsulated as a standalone object. This decouples the CLI invoker from the business logic, allowing new commands to be added with zero changes to the core loop (**Open/Closed Principle**).
-* **Strategy & Factory Patterns:** Sorting logic for `GET_CATEGORY` is handled via a `ListingSortStrategy` interface. A `SortStrategyFactory` determines the strategy at runtime, making the sorting logic easily extensible.
-* **Repository Pattern with Interface Segregation:** Data persistence is managed by a `MarketplaceRepository`. Splitting the repository into `MarketplaceReader` and `MarketplaceWriter` interfaces ensures that read-only commands cannot accidentally modify state (**Interface Segregation Principle**).
-* **Dependency Injection:** All commands receive their dependencies (Reader/Writer) via constructor injection. This makes the application fully decoupled and straightforward to unit test.
-* **Domain Modeling:** Core concepts like `User`, `Listing`, and `Category` are modeled as formal entities rather than simple primitives, providing a foundation for future metadata and business rules.
+* **Command Pattern:** Each marketplace operation (e.g., `NotesING`) is a Spring-managed `@Component`. This decouples the CLI controller from business logic, allowing for easy extensibility without modifying existing code.
+* **Dependency Injection (IoC):** Manual factories have been replaced by Spring’s Inversion of Control. Components are wired together via constructor injection, facilitating better testability and modularity.
+* **Strategy Pattern:** Sorting logic is decoupled into specific strategies (Price vs. Time), managed by a factory to ensure the system can support new sorting requirements with minimal changes.
+* **Interface Segregation:** The data layer is accessed through specific `MarketplaceReader` and `MarketplaceWriter` interfaces, ensuring that commands only have access to the operations they require.
+* **Domain Modeling:** Core concepts are represented as formal entities (`User`, `Listing`, `Category`) rather than primitives, providing a robust foundation for future business rules.
 
 ---
 
 ## **Technical Optimizations & Rigor**
 
-### **1. O(1) Read-Heavy Optimization**
-As per the requirement that `GET_TOP_CATEGORY` is a read-heavy operation, I implemented an **Eager Caching Strategy**:
-* **Mechanism:** The repository maintains an internal frequency map of categories. A `volatile cachedTopCategory` field is updated only during write operations.
-* **Benefit:** Complexity is shifted to the write path, allowing frequent read operations to execute in constant time $O(1)$.
+### **1. Concurrency & Race Condition Prevention**
+* **Atomic Registration:** The user registration logic uses `ConcurrentHashMap.putIfAbsent()` to ensure that concurrent attempts to register the same username are handled atomically, resolving previous race condition concerns.
+* **Thread-Safe Storage:** All in-memory data structures utilize `ConcurrentHashMap` and `AtomicInteger` for thread-safe operations in a multi-threaded environment.
 
-### **2. Concurrency & Race Condition Prevention**
-* **Atomic Operations:** Used `putIfAbsent` for user registration to prevent race conditions during concurrent account creation.
-* **Thread-Safe Storage:** Utilized `ConcurrentHashMap` for storage and `AtomicInteger` for sequential 6-digit ID generation.
+### **2. O(1) Read-Heavy Optimization**
+* **Eager Caching:** The repository maintains an internal frequency map and a `volatile` cache for the top category.
+* **Performance:** Calculations are performed during write operations (Add/Delete), allowing the read-heavy `GET_TOP_CATEGORY` command to execute in constant time $O(1)$.
+* **Tie-Breaking:** The system implements "Incumbent Stability," where a leader is only replaced if a challenger's volume is strictly greater.
 
 ### **3. Defensive Programming & Validation**
-* **Input Validation:** The application strictly validates business constraints, rejecting empty titles, descriptions, or categories, and enforcing positive pricing.
-* **Resource Management:** Implemented **try-with-resources** for system scanners to ensure proper resource cleanup and prevent memory leaks.
-* **Dynamic Data:** Replaced hardcoded constants with dynamic timestamp generation to reflect real-time marketplace activity.
+* **Input Sanitization:** The application rejects empty titles, descriptions, or categories and enforces positive pricing.
+* **Modern Resource Management:** Spring Shell handles the STDIN stream, ensuring resources are managed by the framework and resolving issues related to unclosed Scanners.
+* **Dynamic Data:** Timestamps are generated dynamically using `java.time` APIs at the moment of creation.
 
 ---
 
 ## **How to Build and Run**
 
+### **Prerequisites**
+* Java 17 or higher
+* Maven
+
 ### **Build**
 ```bash
-chmod +x build.sh
-./build.sh
+mvn clean install
 ```
 
 ### **Run**
 ```bash
-chmod +x run.sh
-./run.sh
+mvn spring-boot:run
 ```
 
 ### **Automated Testing**
-The submission includes a custom test suite using Java standard assertions. Run it with the -ea (enable assertions) flag:
+The project includes a suite of integration tests that validate business logic, concurrency, and validation rules. These tests are configured to run in non-interactive mode to support CI/CD pipelines.
 ```bash
-javac -d out $(find src -name "*.java")
-java -ea -cp out com.carousell.marketplace.MarketplaceTest
+mvn test
 ```
 ---
 
-## **Git History**
+## **Development History**
 
-The submission includes the .git directory. The history shows a professional, iterative development flow:
+The project evolution demonstrates a shift from basic functional requirements to architectural excellence:
 
-* **Initial Scaffolding:** Interface definitions and basic CLI loop.
-* **Core Feature Set:** Implementation of the data layer and basic commands.
+* **Standard Java Implementation:** Established core logic and patterns.
+* **Concurrency Hardening:** Resolved race conditions and optimized read performance.
 * **SOLID Refactor:** Decoupling logic through interfaces and Dependency Injection.
-* **Production Hardening:** Addressing race conditions, resource management, and input validation..
+* **Production Hardening:** Addressing race conditions, resource management, and input validation.
+* **Spring Boot & Lombok Refactor:** Integrated professional frameworks for dependency injection, boilerplate reduction, and robust CLI management.
 
 ---
